@@ -16,13 +16,8 @@ class _MyAppState extends State<MyApp> {
   TextEditingController textEditingController = TextEditingController();
   Map<dynamic, dynamic>? data;
   Uint8List? image;
-  int selectedIndex = 0;
   final MethodChannel channel = const MethodChannel('com.karthikayanApps/methods');
-  dynamic? val;
-
-  Future<void> getImages() async {
-    data = await channel.invokeMethod('getImages', {"name": textEditingController.text});
-  }
+  bool isLoading = false;
 
   @override
   void initState() {
@@ -33,44 +28,74 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Flutter Demo',
-      home: Scaffold(
-        body: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            TextField(controller: textEditingController),
-            image != null && image!.isNotEmpty ? Image.memory(image!, width: 100, height: 100) : Container(),
-            ElevatedButton(
-                onPressed: () async {
-                  await getImages();
-                  while (true) {
-                    if (data?.keys.first) {
-                      if(data?.values.first[0].length == 1 && data?.values.first[0][0] == 0){
-                        print("error area");
+      title: 'Flutter Generate images with text',
+      home: SafeArea(
+        child: Scaffold(
+          body: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: TextField(
+                controller: textEditingController,
+                decoration: InputDecoration(
+                  contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 16), // Padding inside the TextField
+                  hintText: "Enter text",
+                  border: OutlineInputBorder( // Default border
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: Colors.grey, width: 1),
+                  ),
+                  enabledBorder: OutlineInputBorder( // Border when not focused
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: Colors.grey, width: 1),
+                  ),
+                  focusedBorder: OutlineInputBorder( // Border when focused
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: Colors.blue, width: 2),
+                  ),
+                ),
+                            ),
+              ),
+
+              isLoading? Center(child: CircularProgressIndicator(),) : ElevatedButton(
+                  onPressed: () async {
+
+                    isLoading = true;
+                    setState(() {});
+                    data = await channel.invokeMethod('getImages', {"name": textEditingController.text});
+                    while (true) {
+                      if (data?.keys.first) {
+                        break;
                       }
-                      else{
-                        image = data!.values.first[selectedIndex];
-                      }
-                      break;
+                      data = await channel.invokeMethod('getImages', {"name": textEditingController.text});
                     }
-                    await getImages();
-                  }
-                  setState(() {});
-                },
-                child: Text("click")),
-            ElevatedButton(
-                onPressed: () {
-                  if (selectedIndex == data!.values.first.length - 1) {
-                    selectedIndex = 0;
-                    image = data!.values.first[selectedIndex];
-                  } else {
-                    selectedIndex++;
-                    image = data!.values.first[selectedIndex];
-                  }
-                  setState(() {});
-                },
-                child: Text("change")),
-          ],
+                    isLoading = false;
+                    setState(() {});
+
+                  },
+                  child: Text("Search")),
+              if(data != null)
+                Expanded(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.vertical,
+                    child: Wrap(
+                      children: [
+                        for(int i = 0; i< data!.values.first.length; i++)
+                          Padding(
+                            padding: const EdgeInsets.all(2.0),
+                            child: Image.memory(
+                              data!.values.first[i],
+                              width: 100,
+                              height: 100,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                      ]
+                    ),
+                  )
+              ),
+            ],
+          ),
         ),
       ),
     );
